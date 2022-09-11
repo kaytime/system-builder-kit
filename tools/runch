@@ -1,0 +1,136 @@
+#! /bin/sh
+
+
+# Functions.
+
+put () { printf "%b\n" "$@"; }
+err () { put "runch: \e[31mError:\e[m $*" >&2; exit 1; }
+
+clean () {
+    umount -Rf "$chroot_dir/proc" \
+               "$chroot_dir/sys" \
+               "$chroot_dir/dev" \
+               "$chroot_dir/run" \
+               "$chroot_dir/tmp" \
+               "$chroot_dir/etc/hosts" \
+               "$chroot_dir/etc/host.conf" \
+               "$chroot_dir/etc/nsswitch.conf" \
+               "$chroot_dir/etc/resolv.conf"
+
+    # Clean the user mount points.
+
+    for m in $_extra_mount_points; do umount -Rf "$chroot_dir/${m##*:}"; done
+    for d in $_rm_f; do rm -rf "$chroot_dir/$d"; done
+}
+
+
+mnt () {
+    test -e "$1" ||
+        err "'$1' does not exist."
+
+    mkdir -p "${2%/*}"
+
+    test -f "$1" && > "${2%/*}"
+    test -d "$1" && mkdir -p "$2"
+
+    mount -B "$1" "$2"
+}
+
+
+# Parse the command line.
+
+while :; do
+    case "$1" in
+        ( -m )  _extra_mount_points="$_extra_mount_points $2"; shift 2;;
+        ( -u )  user_spec="--userspec=$2"; shift 2;;
+        ( -r )  _rm_f="$_rm_f $2"; shift 2;;
+
+        ( -d | --debug )    set -x; shift;;
+
+        ( -h | --help )     put "runch: Run commands with chroot in a preconfigured directory." \
+                                "" \
+                                "Usage:" \
+                                "  runch opts dir cmd args  Where opts are any options, dir is the chroot directory," \
+                                "                           cmd is the command to be ran, and args are any arguments" \
+                                "                           to pass to the command." \
+                                "" \
+                                "Options:" \
+                                "  -h, --help       Show this help." \
+                                "  -d, --debug      Enable debugging messges." \
+                                "  -m src:mnt       Mount src into <dir>/mnt." \
+                                "  -u user[:group]  Run cmd as the specified user and group id." \
+                                "  -r file          On exit, remove file from chroot directory."
+            exit;;
+
+        ( -* )  err "Unknown option '$1'.";;
+        ( * )   break;;
+    esac
+done
+
+
+# Check the command line.
+
+test $(id -u) -eq 0 ||
+    err "This program needs root privileges to run."
+
+test -d "$1" ||
+    err "'$1' is not a directory."
+
+chroot_dir="$1"
+shift
+
+which chroot ||
+    err "Could not find chroot, aborting."
+
+put "chroot_dir: $chroot_dir"
+put "cmd: $*"
+
+
+# Clean the chroot directory on exit.
+
+trap clean EXIT HUP INT TERM
+
+
+# Create the FHS mount-points for the chroot.
+
+mkdir -p "$chroot_dir/proc" \
+         "$chroot_dir/sys" \
+         "$chroot_dir/dev" \
+         "$chroot_dir/run" \
+         "$chroot_dir/tmp"
+
+mount -t proc -o nosuid,noexec,nodev - "$chroot_dir/proc"
+mount -t sysfs -o nosuid,noexec,nodev,ro - "$chroot_dir/sys"
+mount -t devtmpfs -o mode=0755,nosuid - "$chroot_dir/dev"
+mount -t devpts -o mode=0620,gid=5,nosuid,noexec - "$chroot_dir/dev/pts"
+mount -t tmpfs -o mode=1777,nosuid,nodev - "$chroot_dir/dev/shm"
+mount -t tmpfs -o mode=1777,strictatime,nodev,nosuid - "$chroot_dir/tmp"
+mount -B /run "$chroot_dir/run"
+
+
+# Allow network access.
+
+mkdir -p "$chroot_dir/etc"
+
+for f in \
+    "/etc/hosts" \
+    "/etc/host.conf" \
+    "/etc/nsswitch.conf" \
+    "/etc/resolv.conf"
+do
+    test -f "$chroot_dir/$f" &&
+        continue
+
+    test -f "$f" &&
+        cp "$f" "$chroot_dir/$f"
+done
+
+
+# Mount user-specified mount-points.
+
+for dir in $_extra_mount_points; do mnt "${dir%%:*}" "$chroot_dir/${dir##*:}"; done
+
+
+# chroot.
+
+chroot $user_spec -- "$chroot_dir" "$@"

@@ -1,0 +1,58 @@
+#! /bin/sh
+
+
+err () { printf "copier: \e[31mError:\e[0m %s\n" "$*" >&2; exit 1; }
+
+case "$1" in
+    ( -h | --help )
+        printf "%s\n" \
+            "copier: Copy binaries and their dependencies to a directory." \
+            "" \
+            "Usage:" \
+            "  copier [-h|--help]   Show this help." \
+            "  copier <dir>         Copy the list of binaries read from stdin into <dir>."
+        exit;;
+
+    ( -d | --debug )
+        set -x
+        shift;;
+esac
+
+
+#   Check the command line.
+
+test $# -lt 2 &&
+    err "Too few arguments."
+
+dst="$1"
+shift
+
+
+#   Check if the arguments are files.
+
+for f in "$@"; do
+    test -f "$f" ||
+        err "'$f' is not a file."
+done
+
+
+for f in "$@"; do
+    #   Copy the binaries.
+
+    mkdir -p "$dst/${f%/*}"
+    cp -u "$f" "$dst/$f"
+
+    #   Copy the libraries.
+
+    ldd "$f" \
+    | cut -d " " -f 3  \
+    | grep -vE -e 'dynamic'	-e '(^$|:$)' \
+    | sort -u \
+    | while read l; do
+        test -f "$l" ||
+            err "Missing dependency of '$f': '$l'."
+
+        mkdir -p "$dst/${l%/*}"
+        cp -u "$l" "$dst/$l"
+    done
+done

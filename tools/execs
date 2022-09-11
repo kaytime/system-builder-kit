@@ -1,0 +1,49 @@
+#! /bin/sh
+
+
+case "$1" in
+    ( -h | --help )
+        printf "%s\n" \
+            "execs: Print the external commands called by a shell script." \
+            "" \
+            "usage:" \
+            "  execs [-h|--help]    Show this help." \
+            "  execs <scripts>      Print all external commands called by <scripts>."
+
+        exit;;
+esac
+
+
+#   Functions.
+
+err () { printf "${0##*/}: \e[31merror:\e[0m %s\n" "$*" >&2; exit 1; }
+
+_list_cmds () {
+    sed '/^#/d
+         /^$/d
+         /^[ \t]*/d
+         s:(:\n:g
+         s:{:\n:g
+         s:`:\n:g
+         s:|:\n:g
+         s:&:\n:g
+         s:;:\n:g
+         s:exec:\n:g
+         s:eval:\n:g' "$@"
+}
+
+_get_path () {
+    while read f; do
+        type "$f" | grep -Eq 'function|builtin' && continue
+        which -- "$f" && continue
+        test -f "$f" && printf "%s\n" "$f"
+    done 2> /dev/null
+}
+
+
+#   Get the list.
+
+_list_cmds "$@" \
+    | awk '{print $1}' \
+    | sort -u \
+    | _get_path

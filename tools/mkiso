@@ -1,0 +1,155 @@
+#! /bin/sh
+
+
+put () { printf "%b\n" "$@"; }
+err () { put "mkiso: \e[31mError:\e[m $*" >&2; exit 1; }
+
+
+#   option parsing.
+
+while :; do
+    case "$1" in
+        ( -V )  label="$2"; shift 2;;
+        ( -g )  cfg_files="$cfg_files $2"; shift 2;;
+        ( -t )  themes="$themes $2"; shift 2;;
+
+        ( -u )  update_url="$2"; shift 2;;
+        ( -s )  hash_url="$2"; shift 2;;
+        ( -r )  release="$2"; shift 2;;
+
+        ( -b )  bios=y; shift;;
+        ( -e )  uefi=y; shift;;
+
+        ( -d | --debug )    set -x; shift;;
+        ( -h | --help )     put "mkiso: Generate bootable ISO images." \
+                                "" \
+                                "Usage:" \
+                                "  mkiso [-h|--help]            Show this help." \
+                                "  mkiso [options] <dir> <img>  Generate img with contents from dir." \
+                                "" \
+                                "Options:" \
+                                "  -d, --debug    Enable debugging messages." \
+                                "  -b             Enable BIOS support." \
+                                "  -e             Enable UEFI support." \
+                                "  -V label       Use label as filesystem label." \
+                                "  -g file        Use file as a GRUB configuration file." \
+                                "  -t path        Use path as a GRUB theme." \
+                                "  -u update_url  znx's update_url." \
+                                "  -s hash_url    znx's hash_url." \
+                                "  -r release     znx's release."
+            exit;;
+
+        ( -* )  err "Unknown option '$1'.";;
+        ( * )   break;;
+    esac
+done
+
+
+#   Check the command line.
+
+iso_dir="$1"
+output="$2"
+
+test $# -eq 2 ||
+    err "Bad command line. Wrong number of arguments."
+
+test -d "$iso_dir" ||
+    err "'$iso_dir' is not a directory."
+
+
+#   Copy the configuration files.
+
+test "$cfg_files" && {
+    mkdir -p "$iso_dir/boot/grub"
+    cp $cfg_files "$iso_dir/boot/grub"
+}
+
+
+#   Copy the themes.
+
+test "$themes" && {
+    mkdir -p "$iso_dir/boot/grub/themes"
+    cp -r $themes "$iso_dir/boot/grub/themes"
+}
+
+
+#   Create the .INFO file.
+
+>> "$iso_dir/.INFO" put \
+    "HASH_URL $hash_url" \
+    "UPDATE_URL $update_url" \
+    "RELEASE $release"
+
+
+
+
+#   Generate boot artifacts.
+
+test "$bios" = y && {
+    bios_img=bios.img
+
+    grub-mkimage -O i386-pc-eltorito \
+                 -o "$iso_dir/$bios_img" \
+                 -p /boot/grub \
+                 biosdisk boot linux search normal configfile part_gpt btrfs ext2 fat iso9660 loopback test keystatus gfxmenu regexp probe all_video gfxterm font echo read ls cat png jpeg halt reboot
+
+    bios_opts="
+        -eltorito-alt-boot
+        -b bios.img
+        -no-emul-boot
+        -graft-points bios.img=$iso_dir/$bios_img
+        -boot-load-size 4
+        -boot-info-table
+        -c boot.cat
+        --grub2-boot-info
+        --grub2-mbr /usr/lib/grub/i386-pc/boot_hybrid.img
+    "
+}
+
+
+test "$uefi" = y && {
+    efi_img=$(mktemp)
+
+    grub-mkimage -O x86_64-efi \
+                 -o "$efi_img" \
+                 -p /boot/grub \
+                 efi_gop efi_uga boot linux search normal configfile part_gpt btrfs ext2 fat iso9660 loopback test keystatus gfxmenu regexp probe all_video gfxterm font echo read ls cat png jpeg halt reboot
+
+    export MTOOLS_SKIP_CHECK=1
+
+    mkfs.vfat -C "$iso_dir/efi.img" \
+              $(($(wc -c < $efi_img) / 1024 + 511))
+
+    mmd -i "$iso_dir/efi.img" \
+        efi \
+        efi/boot
+
+    mcopy -i "$iso_dir/efi.img" \
+          "$efi_img" \
+          ::efi/boot/bootx64.efi
+
+    uefi_opts="
+        -eltorito-alt-boot
+        -no-emul-boot
+        -e efi.img
+        -graft-points efi.img=$iso_dir/efi.img
+        -append_partition 1 0xef $iso_dir/efi.img
+    "
+}
+
+
+#   Generate ISO image.
+
+xorriso -as mkisofs \
+        -iso-level 3 \
+        -full-iso9660-filenames \
+        -volid "$label" \
+        -o "$output" \
+        "$iso_dir" \
+        $bios_opts \
+        $uefi_opts \
+        -hfsplus \
+        -hfsplus-serial-no fc4d1567781ece66 \
+        -hfsplus-block-size 512 \
+        -apm-block-size 512
+
