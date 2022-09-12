@@ -4,10 +4,9 @@
 
 add_kaytime_key_repo() { curl -L https://packagecloud.io/kaytime/repo/gpgkey | apt-key add -; }
 add_kaytime_key_compat() { curl -L https://packagecloud.io/kaytime/compat/gpgkey | apt-key add -; }
-# add_kaytime_key_testing() { curl -L https://packagecloud.io/kaytime/testing/gpgkey | apt-key add -; }
 add_kaytime_key_stable() { curl -L https://packagecloud.io/kaytime/stable/gpgkey | apt-key add -; }
-add_kaytime_key_beta() { curl -L https://packagecloud.io/kaytime/beta/gpgkey | apt-key add -; }
-add_kaytime_key_alpha() { curl -L https://packagecloud.io/kaytime/alpha/gpgkey | apt-key add -; }
+add_kaytime_key_unstable() { curl -L https://packagecloud.io/kaytime/unstable/gpgkey | apt-key add -; }
+add_kaytime_key_testing() { curl -L https://packagecloud.io/kaytime/testing/gpgkey | apt-key add -; }
 add_repo_keys() { apt-key adv --keyserver keyserver.ubuntu.com --recv-keys $@; }
 appstream_refresh_force() { appstreamcli refresh --force; }
 autoremove() { apt -yy autoremove $@; }
