@@ -1,5 +1,13 @@
-for entry in /configs/scripts/builder/*.sh; do
-    if [ "$entry" != "/configs/scripts/builder/main.sh" ]; then
-        source $entry
-    fi
-done
+source /configs/scripts/builder/adding_bootloader.sh
+source /configs/scripts/builder/adding_casper.sh
+source /configs/scripts/builder/adding_devuan_and_elogind.sh
+source /configs/scripts/builder/adding_devuan_misc_packages.sh
+source /configs/scripts/builder/adding_open_rc.sh
+source /configs/scripts/builder/adding_plymouth.sh
+source /configs/scripts/builder/adding_policykit_elogind.sh
+source /configs/scripts/builder/adding_secure_boot.sh
+source /configs/scripts/builder/adding_sources_file.sh
+source /configs/scripts/builder/adding_system_bootscreen.sh
+source /configs/scripts/builder/adding_system_firmware.sh
+source /configs/scripts/builder/adding_system_installer.sh
+source /configs/scripts/builder/install_basic_packages.sh
