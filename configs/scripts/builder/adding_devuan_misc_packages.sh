@@ -5,7 +5,7 @@ adding_devuan_misc_packages() {
         541922FB \
         61FC752C >/dev/null
 
-    cp /builder/configs/files/sources.list.devuan.daedalus /etc/apt/sources.list.d/devuan-daedalus-repo.list
+    cp /configs/files/sources.list.devuan.daedalus /etc/apt/sources.list.d/devuan-daedalus-repo.list
 
     update
 

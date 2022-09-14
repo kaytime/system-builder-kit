@@ -5,7 +5,7 @@ adding_policykit_elogind() {
         541922FB \
         61FC752C >/dev/null
 
-    cp /builder/configs/files/sources.list.devuan.beowulf /etc/apt/sources.list.d/devuan-beowulf-repo.list
+    cp /configs/files/sources.list.devuan.beowulf /etc/apt/sources.list.d/devuan-beowulf-repo.list
 
     update
 
