@@ -2,19 +2,19 @@
 
 adding_devuan_and_elogind() {
     DEVUAN_EUDEV_ELOGIND_PKGS='
-	eudev
-	elogind
-'
+        eudev
+        elogind
+    '
 
     REMOVE_SYSTEMD_PKGS='
-	systemd
-	systemd-sysv
-	libsystemd0
-'
+        systemd
+        systemd-sysv
+        libsystemd0
+    '
 
     SYSTEMCTL_STANDALONE_PKG='
-	systemctl
-'
+        systemctl
+    '
 
     install $DEVUAN_EUDEV_ELOGIND_PKGS
     purge $REMOVE_SYSTEMD_PKGS

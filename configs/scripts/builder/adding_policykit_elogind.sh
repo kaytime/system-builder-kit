@@ -10,13 +10,13 @@ adding_policykit_elogind() {
     update
 
     DEVUAN_POLKIT_PKGS='
-	libpam-elogind/beowulf
-	libpolkit-agent-1-0/beowulf
-	libpolkit-backend-elogind-1-0/beowulf
-	libpolkit-gobject-1-0/beowulf
-	libpolkit-gobject-elogind-1-0/beowulf
-	policykit-1/beowulf
-'
+        libpam-elogind/beowulf
+        libpolkit-agent-1-0/beowulf
+        libpolkit-backend-elogind-1-0/beowulf
+        libpolkit-gobject-1-0/beowulf
+        libpolkit-gobject-elogind-1-0/beowulf
+        policykit-1/beowulf
+    '
 
     install_downgrades $DEVUAN_POLKIT_PKGS
 
